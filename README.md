@@ -2,7 +2,7 @@
 
 # 📚 PWEBL
 
-**Repository praktikum kelompok — Pemrograman Web Lanjut**
+**Repository praktikum — Pemrograman Web Lanjut**
 
 Dibangun dengan [Laravel](https://laravel.com).
 
