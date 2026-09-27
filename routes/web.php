@@ -3,6 +3,7 @@
 use App\Http\Controllers\CalculatorController;
 use App\Http\Controllers\DiscountController;
 use App\Http\Controllers\FlatShapeController;
+use App\Http\Controllers\PenjualanController;
 use App\Http\Controllers\SolidShapeController;
 use Illuminate\Support\Facades\Route;
 
@@ -32,3 +33,8 @@ Route::post('/solid-shape/kubus', [SolidShapeController::class, 'kubus']);
 Route::post('/solid-shape/balok', [SolidShapeController::class, 'balok']);
 Route::post('/solid-shape/tabung', [SolidShapeController::class, 'tabung']);
 
+
+// Praktikum 3
+// Penjualan & Katalog Item
+Route::get('/penjualan', [PenjualanController::class, 'index'])->name('penjualan.index');
+Route::get('/katalog', [PenjualanController::class, 'katalog'])->name('penjualan.katalog');

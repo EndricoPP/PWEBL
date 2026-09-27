@@ -11,7 +11,8 @@
         @csrf
         <label>Harga: <input type="number" name="harga" required></label><br>
         <label>Persen Diskon (%): <input type="number" name="persen_diskon" required></label><br>
-        <button type="submit">Hitung</button>
+        <button type="submit">oke</button>
     </form>
 </body>
 </html>
+

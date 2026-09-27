@@ -15,7 +15,7 @@ class DiscountController extends Controller
     public function calculate(Request $request)
     {
         $harga = (float) $request->harga;
-        $persenDiskon = (float) $request->persen_diskon;
+        $persenDiskon = (float) $request->persendiskon;
 
         $nilaiDiskon = $harga * ($persenDiskon / 100);
         $hargaSetelahDiskon = $harga - $nilaiDiskon;
