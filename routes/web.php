@@ -1,10 +1,14 @@
 <?php
 
+use App\Http\Controllers\AuthController;
+use App\Http\Controllers\BarangController;
 use App\Http\Controllers\CalculatorController;
 use App\Http\Controllers\DiscountController;
 use App\Http\Controllers\FlatShapeController;
 use App\Http\Controllers\PenjualanController;
 use App\Http\Controllers\SolidShapeController;
+use App\Http\Controllers\TransactionController;
+use App\Http\Middleware\CekAksesAdmin;
 use Illuminate\Support\Facades\Route;
 
 Route::get('/', function () {
@@ -38,3 +42,25 @@ Route::post('/solid-shape/tabung', [SolidShapeController::class, 'tabung']);
 // Penjualan & Katalog Item
 Route::get('/penjualan', [PenjualanController::class, 'index'])->name('penjualan.index');
 Route::get('/katalog', [PenjualanController::class, 'katalog'])->name('penjualan.katalog');
+
+// Praktikum 5: Session & Middleware
+// Rute Otentikasi
+Route::post('/login', [AuthController::class, 'login']);
+Route::post('/logout', [AuthController::class, 'logout']);
+
+// Rute Terproteksi
+Route::get('/admin/dashboard', function () {
+    return response()->json(['message' => 'Selamat datang di Panel Admin']);
+})->middleware(CekAksesAdmin::class);
+
+// Praktikum 4: Transaksi Penjualan (Query Builder + AJAX)
+Route::get('/transactions/create', [TransactionController::class, 'create'])->name('transactions.create');
+Route::get('/transactions/get-items', [TransactionController::class, 'getItems'])->name('transactions.get-items');
+Route::post('/transactions', [TransactionController::class, 'store'])->name('transactions.store');
+Route::get('/transactions/receipt/{invoice}', [TransactionController::class, 'receipt'])->name('transactions.receipt');
+
+// Praktikum 5: Barang (session) - hanya admin yang sudah login
+Route::middleware(CekAksesAdmin::class)->group(function () {
+    Route::get('/barang', [BarangController::class, 'index']);
+    Route::post('/barang', [BarangController::class, 'store']);
+});
