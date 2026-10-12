@@ -9,6 +9,7 @@ use App\Http\Controllers\PenjualanController;
 use App\Http\Controllers\SolidShapeController;
 use App\Http\Controllers\TransactionController;
 use App\Http\Middleware\CekAksesAdmin;
+use App\Http\Middleware\CekLogin;
 use Illuminate\Support\Facades\Route;
 
 Route::get('/', function () {
@@ -45,6 +46,7 @@ Route::get('/katalog', [PenjualanController::class, 'katalog'])->name('penjualan
 
 // Praktikum 5: Session & Middleware
 // Rute Otentikasi
+Route::post('/register', [AuthController::class, 'register']);
 Route::post('/login', [AuthController::class, 'login']);
 Route::post('/logout', [AuthController::class, 'logout']);
 
@@ -59,8 +61,8 @@ Route::get('/transactions/get-items', [TransactionController::class, 'getItems']
 Route::post('/transactions', [TransactionController::class, 'store'])->name('transactions.store');
 Route::get('/transactions/receipt/{invoice}', [TransactionController::class, 'receipt'])->name('transactions.receipt');
 
-// Praktikum 5: Barang (session) - hanya admin yang sudah login
-Route::middleware(CekAksesAdmin::class)->group(function () {
+// Praktikum 5: Barang - hanya akun yang sudah login, data per akun
+Route::middleware(CekLogin::class)->group(function () {
     Route::get('/barang', [BarangController::class, 'index']);
     Route::post('/barang', [BarangController::class, 'store']);
 });

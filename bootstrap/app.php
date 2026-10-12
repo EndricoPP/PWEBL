@@ -13,10 +13,10 @@ return Application::configure(basePath: dirname(__DIR__))
     )
     ->withMiddleware(function (Middleware $middleware): void {
         // Praktikum 5: dites lewat API tester tanpa token CSRF
-        $middleware->validateCsrfTokens(except: ['login', 'logout', 'barang']);
+        $middleware->validateCsrfTokens(except: ['register', 'login', 'logout', 'barang']);
     })
     ->withExceptions(function (Exceptions $exceptions): void {
         $exceptions->shouldRenderJsonWhen(
-            fn (Request $request) => $request->is('api/*') || $request->expectsJson(),
+            fn (Request $request) => $request->is('api/*', 'register', 'login', 'logout', 'barang', 'admin/*') || $request->expectsJson(),
         );
     })->create();

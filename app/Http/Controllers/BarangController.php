@@ -3,16 +3,20 @@
 namespace App\Http\Controllers;
 
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
 
-// Praktikum 5: barang disimpan di session (tanpa database)
+// Praktikum 5: barang milik masing-masing akun (dibatasi oleh user_id di session)
 class BarangController extends Controller
 {
     public function index(Request $request)
     {
-        $barang = $request->session()->get('barang', []);
+        $barang = DB::table('barang')
+            ->where('user_id', $request->session()->get('user_id'))
+            ->orderBy('id')
+            ->get(['id', 'nama', 'harga', 'stok']);
 
         return response()->json([
-            'jumlah' => count($barang),
+            'jumlah' => $barang->count(),
             'data'   => $barang,
         ]);
     }
@@ -25,13 +29,15 @@ class BarangController extends Controller
             'stok'  => 'required|integer|min:0',
         ]);
 
-        $barang = $request->session()->get('barang', []);
-        $barang[] = $data;
-        $request->session()->put('barang', $barang);
+        $id = DB::table('barang')->insertGetId($data + [
+            'user_id'    => $request->session()->get('user_id'),
+            'created_at' => now(),
+            'updated_at' => now(),
+        ]);
 
         return response()->json([
             'message' => 'Barang berhasil ditambahkan.',
-            'data'    => $data,
+            'data'    => ['id' => $id] + $data,
         ], 201);
     }
 }
