@@ -4,143 +4,103 @@ namespace App\Http\Controllers;
 
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
-use Illuminate\Support\Facades\Validator;
 
-// Praktikum 4
+// Pertemuan 6
 class TransactionController extends Controller
 {
-    // Render Halaman Utama Transaksi
+    public function index()
+    {
+        $transactions = DB::table('transactions')->get();
+
+        return view('transactions.index', ['transactions' => $transactions]);
+    }
+
     public function create()
     {
-        return view('transactions.create');
+        $items = DB::table('items')->get();
+
+        return view('transactions.create', ['items' => $items]);
     }
 
-    // Endpoint AJAX: Ambil data barang untuk Modal
-    public function getItems(Request $request)
-    {
-        $search = $request->get('search');
-
-        $query = DB::table('items')->where('stock', '>', 0);
-
-        if (!empty($search)) {
-            $query->where('name', 'like', '%' . $search . '%');
-        }
-
-        $items = $query->orderBy('name', 'asc')->get();
-
-        return response()->json([
-            'status' => true,
-            'data'   => $items
-        ]);
-    }
-
-    // Endpoint AJAX: Simpan Transaksi Penjualan
     public function store(Request $request)
     {
-        $validator = Validator::make($request->all(), [
-            'items'            => 'required|array|min:1',
-            'items.*.item_id'  => 'required|integer',
-            'items.*.quantity' => 'required|integer|min:1',
-            'items.*.price'    => 'required|numeric|min:0',
-            'discount_percent' => 'nullable|numeric|min:0|max:100',
+        $request->validate([
+            'tanggal'       => 'required|date',
+            'keterangan'    => 'nullable|string|max:200',
+            'items'         => 'required|array|min:1',
+            'items.*.id'    => 'required|exists:items,id',
+            'items.*.qty'   => 'required|numeric|min:1',
+            'items.*.price' => 'required|numeric|min:0',
         ]);
-
-        if ($validator->fails()) {
-            return response()->json([
-                'status'  => false,
-                'message' => 'Validasi gagal, periksa item yang diinput.',
-                'errors'  => $validator->errors()
-            ], 422);
-        }
 
         try {
             DB::beginTransaction();
 
-            $subtotalAmount   = 0;
-            $transactionItems = $request->items;
-            $discountPercent  = (float) ($request->discount_percent ?? 0);
-
-            // Validasi stok barang di tingkat server
-            foreach ($transactionItems as $item) {
-                $dbItem = DB::table('items')->where('id', $item['item_id'])->lockForUpdate()->first();
-
-                if (!$dbItem) {
-                    throw new \Exception("Item ID {$item['item_id']} tidak ditemukan.");
-                }
-
-                if ($dbItem->stock < $item['quantity']) {
-                    throw new \Exception("Stok barang '{$dbItem->name}' tidak mencukupi. Sisa: {$dbItem->stock}");
-                }
-
-                $subtotalAmount += $item['price'] * $item['quantity'];
+            // Grand total dihitung di sisi server
+            $grandTotal = 0;
+            foreach ($request->items as $item) {
+                $grandTotal += $item['qty'] * $item['price'];
             }
 
-            // Tantangan 1: total setelah diskon persentase
-            $totalAmount = $subtotalAmount - ($subtotalAmount * $discountPercent / 100);
-
-            // 1. Insert Header Transaksi
-            $invoiceNumber = 'TRX-' . date('Ymd') . '-' . rand(1000, 9999);
+            $invoiceNumber = 'TRX-' . date('YmdHis');
             $transactionId = DB::table('transactions')->insertGetId([
                 'invoice_number'   => $invoiceNumber,
-                'transaction_date' => now()->toDateString(),
-                'subtotal_amount'  => $subtotalAmount,
-                'discount_percent' => $discountPercent,
-                'total_amount'     => $totalAmount,
+                'transaction_date' => $request->tanggal,
+                'description'      => $request->keterangan,
+                'total_amount'     => $grandTotal,
                 'created_at'       => now(),
                 'updated_at'       => now(),
             ]);
 
-            // 2. Insert Detail Transaksi & Potong Stok
-            foreach ($transactionItems as $item) {
-                $subtotal = $item['price'] * $item['quantity'];
-
+            foreach ($request->items as $item) {
                 DB::table('transaction_details')->insert([
-                    'transaction_id' => $transactionId,
-                    'item_id'        => $item['item_id'],
+                    'id_transaction' => $transactionId,
+                    'item_id'        => $item['id'],
+                    'quantity'       => $item['qty'],
                     'price'          => $item['price'],
-                    'quantity'       => $item['quantity'],
-                    'subtotal'       => $subtotal,
+                    'subtotal'       => $item['qty'] * $item['price'],
                     'created_at'     => now(),
                     'updated_at'     => now(),
                 ]);
 
-                // Kurangi stok menggunakan decrement
-                DB::table('items')
-                    ->where('id', $item['item_id'])
-                    ->decrement('stock', $item['quantity']);
+                DB::table('items')->where('id', $item['id'])->decrement('stock', $item['qty']);
             }
 
             DB::commit();
 
             return response()->json([
-                'status'      => true,
-                'message'     => 'Transaksi berhasil disimpan!',
-                'invoice'     => $invoiceNumber,
-                'receipt_url' => route('transactions.receipt', $invoiceNumber),
-            ]);
-
+                'status'  => 'success',
+                'message' => 'Transaksi berhasil disimpan!',
+                'data'    => [
+                    'id'             => $transactionId,
+                    'invoice_number' => $invoiceNumber,
+                    'total_amount'   => $grandTotal,
+                ],
+            ], 200);
         } catch (\Exception $e) {
             DB::rollBack();
 
             return response()->json([
-                'status'  => false,
-                'message' => $e->getMessage()
+                'status'  => 'error',
+                'message' => 'Terjadi kesalahan: ' . $e->getMessage(),
             ], 500);
         }
     }
 
-    // Tantangan 3: Struk penjualan berdasarkan nomor invoice
-    public function receipt(string $invoice)
+    public function show($id)
     {
-        $transaction = DB::table('transactions')->where('invoice_number', $invoice)->first();
-        abort_if(!$transaction, 404);
+        $transaction = DB::table('transactions')->where('id', $id)->first();
+
+        if (!$transaction) {
+            abort(404, 'Transaksi tidak ditemukan');
+        }
 
         $details = DB::table('transaction_details')
-            ->join('items', 'items.id', '=', 'transaction_details.item_id')
-            ->where('transaction_details.transaction_id', $transaction->id)
-            ->select('transaction_details.*', 'items.name')
+            ->join('items', 'transaction_details.item_id', '=', 'items.id')
+            ->select('transaction_details.*', 'items.name as item_name')
+            ->where('transaction_details.id_transaction', $id)
             ->get();
 
-        return view('transactions.receipt', compact('transaction', 'details'));
+        return view('transactions.show', compact('transaction', 'details'));
     }
 }

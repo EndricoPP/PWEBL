@@ -55,11 +55,11 @@ Route::get('/admin/dashboard', function () {
     return response()->json(['message' => 'Selamat datang di Panel Admin']);
 })->middleware(CekAksesAdmin::class);
 
-// Praktikum 4: Transaksi Penjualan (Query Builder + AJAX)
-Route::get('/transactions/create', [TransactionController::class, 'create'])->name('transactions.create');
-Route::get('/transactions/get-items', [TransactionController::class, 'getItems'])->name('transactions.get-items');
-Route::post('/transactions', [TransactionController::class, 'store'])->name('transactions.store');
-Route::get('/transactions/receipt/{invoice}', [TransactionController::class, 'receipt'])->name('transactions.receipt');
+// Pertemuan 6: Transaksi (header-detail, Query Builder + AJAX)
+Route::get('/transactions', [TransactionController::class, 'index']);
+Route::get('/transactions/create', [TransactionController::class, 'create']);
+Route::get('/transactions/show/{id}', [TransactionController::class, 'show']);
+Route::post('/transactions', [TransactionController::class, 'store']);
 
 // Praktikum 5: Barang - hanya akun yang sudah login, data per akun
 Route::middleware(CekLogin::class)->group(function () {
